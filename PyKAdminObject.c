@@ -90,7 +90,7 @@ static PyObject *PyKAdminObject_create_principal(PyKAdminObject *self, PyObject 
         
         } else {
 
-            retval = kadm5_create_principal(self->handle, &entry, KADM5_PRINCIPAL, NULL); 
+            retval = kadm5_create_principal(self->handle, &entry, KADM5_PRINCIPAL , princ_pass); 
             
             if (retval)
                 return PyKAdminError_raise_kadmin_error(retval, "kadm5_create_principal");
@@ -102,6 +102,57 @@ static PyObject *PyKAdminObject_create_principal(PyKAdminObject *self, PyObject 
     Py_RETURN_TRUE;
 }
 
+static PyObject *PyKAdminObject_list_principals(PyKAdminObject *self, PyObject *args, PyObject *kwds) {
+
+    kadm5_ret_t retval;
+
+    char **princs;
+    PyObject * ret_list; 
+    int count,i;  
+    
+    retval = kadm5_get_principals(self->handle, NULL, &princs, &count); 
+
+    if (retval) {
+        return PyKAdminError_raise_kadmin_error(retval, "kadm5_list_principals");
+    }
+
+    ret_list = PyList_New(0);
+    for(i=0; i<count; i++) {
+        PyList_Append(ret_list, PyString_FromString(princs[i]));
+        free(princs[i]);
+    }
+    
+    return Py_BuildValue("N", ret_list);
+}
+
+static PyObject *PyKAdminObject_del_principal(PyKAdminObject *self, PyObject *args, PyObject *kwds) {
+
+    kadm5_ret_t retval;
+    krb5_error_code errno; 
+    char *client_name; 
+    krb5_principal principal;
+
+    if (!PyArg_ParseTuple(args, "s", &client_name))
+        return NULL;
+
+    if (self->handle) {
+
+        Py_XINCREF(self);
+        
+        errno = krb5_parse_name(self->context, client_name, &principal);
+        if (errno) {
+            printf("Failed to parse princ name %d\n", errno);
+        }
+    
+        if ( (retval = kadm5_delete_principal(self->handle, principal ) )) {
+            krb5_free_principal(self->context, principal);
+            return PyKAdminError_raise_kadmin_error(retval, "kadm5_delete_principals");
+        }
+        krb5_free_principal(self->context, principal);
+    	Py_RETURN_TRUE;
+    }
+    return NULL;
+}
 
 static PyKAdminPrincipalObject *PyKAdminObject_get_principal(PyKAdminObject *self, PyObject *args, PyObject *kwds) {
 
@@ -143,6 +194,8 @@ static PyKAdminPrincipalObject *PyKAdminObject_get_principal(PyKAdminObject *sel
 
 static PyMethodDef PyKAdminObject_methods[] = {
     {"get_princ", (PyCFunction)PyKAdminObject_get_principal, METH_VARARGS, ""},
+    {"list_principals", (PyCFunction)PyKAdminObject_list_principals, METH_VARARGS, ""},
+    {"del_principal", (PyCFunction)PyKAdminObject_del_principal, METH_VARARGS, ""},
     {"get_principal", (PyCFunction)PyKAdminObject_get_principal, METH_VARARGS, ""},
     {"ank", (PyCFunction)PyKAdminObject_create_principal, METH_VARARGS, ""},
     {"create_princ", (PyCFunction)PyKAdminObject_create_principal, METH_VARARGS, ""},
