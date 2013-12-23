@@ -77,6 +77,9 @@ class Kadmin(object):
 			raise kadmin.KAdminError,"UserName format need '%s/admin'."
 		return self.admin.create_principal(userName,password)
 
+        def addAppUser(self,userName,host,password):
+                pass                
+
 class Kuser(object):
 
 	"""
