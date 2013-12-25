@@ -42,6 +42,9 @@ sample usage for kadmin:
 
 install:
 
+请根据python版本修改该kadmin.c 的python头文件
+
+
 >  #chmod 777 setup.bash
 
 >  #./setup.bash
